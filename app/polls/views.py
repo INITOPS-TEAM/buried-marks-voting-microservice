@@ -1,14 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
-from loguru import logger
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from app.core.db.session import get_db
+from fastapi import APIRouter, Depends, HTTPException
+from loguru import logger
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.auth import verify_jwt
-from app.polls.models import Poll, Vote
+from app.core.db.session import get_db
 from app.polls import schema as schemas
+from app.polls.models import Poll, Vote
 from app.polls.service import PollService
 
 router = APIRouter()
@@ -18,7 +19,7 @@ router = APIRouter()
 async def create_poll(
     payload: schemas.PollCreate,
     db: AsyncSession = Depends(get_db),
-    user: dict = Depends(verify_jwt)
+    user: dict = Depends(verify_jwt),
 ):
     # check initiator rights
     if payload.type == "ban" and not user["inspector"]:
@@ -34,8 +35,7 @@ async def create_poll(
     if payload.type in ("level_up", "level_top"):
         if payload.target_id != user["user_id"]:
             raise HTTPException(
-                status_code=403,
-                detail="You can only nominate yourself"
+                status_code=403, detail="You can only nominate yourself"
             )
 
     # check if there is no active vote for this user
@@ -43,13 +43,12 @@ async def create_poll(
         select(Poll).where(
             Poll.target_id == payload.target_id,
             Poll.type == payload.type,
-            Poll.status == "active"
+            Poll.status == "active",
         )
     )
     if existing.scalar_one_or_none():
         raise HTTPException(
-            status_code=409,
-            detail="Active poll already exists for this user"
+            status_code=409, detail="Active poll already exists for this user"
         )
 
     # get the number of eligible users
@@ -61,7 +60,7 @@ async def create_poll(
         created_by=user["user_id"],
         status="active",
         total_eligible=total_eligible,
-        ends_at = datetime.now(timezone.utc) + timedelta(hours=24)
+        ends_at=datetime.now(timezone.utc) + timedelta(hours=24),
     )
 
     db.add(poll)
@@ -77,12 +76,10 @@ async def cast_vote(
     poll_id: UUID,
     payload: schemas.VoteCreate,
     db: AsyncSession = Depends(get_db),
-    user: dict = Depends(verify_jwt)
+    user: dict = Depends(verify_jwt),
 ):
     # check if the vote exists and is active
-    result = await db.execute(
-        select(Poll).where(Poll.id == poll_id)
-    )
+    result = await db.execute(select(Poll).where(Poll.id == poll_id))
     poll = result.scalar_one_or_none()
 
     if not poll:
@@ -102,19 +99,12 @@ async def cast_vote(
 
     # checking if the user has already voted
     existing_vote = await db.execute(
-        select(Vote).where(
-            Vote.poll_id == poll_id,
-            Vote.voter_id == user["user_id"]
-        )
+        select(Vote).where(Vote.poll_id == poll_id, Vote.voter_id == user["user_id"])
     )
     if existing_vote.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Already voted")
 
-    vote = Vote(
-        poll_id=poll_id,
-        voter_id=user["user_id"],
-        choice=payload.choice
-    )
+    vote = Vote(poll_id=poll_id, voter_id=user["user_id"], choice=payload.choice)
 
     db.add(vote)
     await db.commit()
@@ -126,9 +116,7 @@ async def cast_vote(
 
 @router.get("/{poll_id}", response_model=schemas.PollRead)
 async def get_poll(
-    poll_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    user: dict = Depends(verify_jwt)
+    poll_id: UUID, db: AsyncSession = Depends(get_db), user: dict = Depends(verify_jwt)
 ):
     result = await db.execute(select(Poll).where(Poll.id == poll_id))
     poll = result.scalar_one_or_none()
@@ -140,9 +128,7 @@ async def get_poll(
 
 @router.get("/{poll_id}/result", response_model=schemas.PollResult)
 async def get_poll_result(
-    poll_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    user: dict = Depends(verify_jwt)
+    poll_id: UUID, db: AsyncSession = Depends(get_db), user: dict = Depends(verify_jwt)
 ):
     result = await db.execute(select(Poll).where(Poll.id == poll_id))
     poll = result.scalar_one_or_none()
@@ -151,22 +137,18 @@ async def get_poll_result(
         raise HTTPException(status_code=404, detail="Poll not found")
 
     votes_for = await db.execute(
-        select(func.count(Vote.id)).where(
-            Vote.poll_id == poll_id,
-            Vote.choice == "for"
-        )
+        select(func.count(Vote.id)).where(Vote.poll_id == poll_id, Vote.choice == "for")
     )
     votes_against = await db.execute(
         select(func.count(Vote.id)).where(
-            Vote.poll_id == poll_id,
-            Vote.choice == "against"
+            Vote.poll_id == poll_id, Vote.choice == "against"
         )
     )
 
     vf = votes_for.scalar()
     va = votes_against.scalar()
     total_voted = vf + va
-    
+
     return schemas.PollResult(
         poll_id=poll.id,
         status=poll.status,
@@ -174,5 +156,5 @@ async def get_poll_result(
         votes_against=va,
         total_voted=total_voted,
         total_eligible=poll.total_eligible if poll.type == "ban" else None,
-        success=poll.status == "success"
+        success=poll.status == "success",
     )

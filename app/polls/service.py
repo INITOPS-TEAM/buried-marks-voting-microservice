@@ -1,13 +1,15 @@
-import httpx
 import os
-from loguru import logger
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 from datetime import datetime, timezone
+
+import httpx
+from loguru import logger
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.polls.models import Poll, Vote
 
 AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL")
+
 
 class PollService:
 
@@ -20,13 +22,11 @@ class PollService:
                     resp = await client.get(f"{AUTH_SERVICE_URL}/api/users/count/")
                 elif poll_type == "level_up":
                     resp = await client.get(
-                        f"{AUTH_SERVICE_URL}/api/users/count/",
-                        params={"role": "2,3"}
+                        f"{AUTH_SERVICE_URL}/api/users/count/", params={"role": "2,3"}
                     )
                 elif poll_type == "level_top":
                     resp = await client.get(
-                        f"{AUTH_SERVICE_URL}/api/users/count/",
-                        params={"role": "3"}
+                        f"{AUTH_SERVICE_URL}/api/users/count/", params={"role": "3"}
                     )
                 return resp.json().get("count", 10)
         except Exception as e:
@@ -63,22 +63,22 @@ class PollService:
                 if poll.type == "ban":
                     resp = await client.post(
                         f"{AUTH_SERVICE_URL}/api/users/{poll.target_id}/ban/",
-                        headers=headers
+                        headers=headers,
                     )
                     resp.raise_for_status()
                 elif poll.type == "level_up":
                     resp = await client.patch(
                         f"{AUTH_SERVICE_URL}/api/users/{poll.target_id}/role/",
                         json={"role": "2"},
-                        headers=headers
-                        )
+                        headers=headers,
+                    )
                     resp.raise_for_status()
                 elif poll.type == "level_top":
                     resp = await client.patch(
                         f"{AUTH_SERVICE_URL}/api/users/{poll.target_id}/role/",
                         json={"role": "3"},
-                        headers=headers
-                        )
+                        headers=headers,
+                    )
                     resp.raise_for_status()
 
             logger.success(f"Auth action triggered for poll {poll.id}")
@@ -91,8 +91,7 @@ class PollService:
         """Close all pending votes — scheduler is called"""
         result = await db.execute(
             select(Poll).where(
-                Poll.status == "active",
-                Poll.ends_at <= datetime.now(timezone.utc)
+                Poll.status == "active", Poll.ends_at <= datetime.now(timezone.utc)
             )
         )
         expired_polls = result.scalars().all()
@@ -101,14 +100,12 @@ class PollService:
             # count the votes
             vf = await db.execute(
                 select(func.count(Vote.id)).where(
-                    Vote.poll_id == poll.id,
-                    Vote.choice == "for"
+                    Vote.poll_id == poll.id, Vote.choice == "for"
                 )
             )
             va = await db.execute(
                 select(func.count(Vote.id)).where(
-                    Vote.poll_id == poll.id,
-                    Vote.choice == "against"
+                    Vote.poll_id == poll.id, Vote.choice == "against"
                 )
             )
             votes_for = vf.scalar()

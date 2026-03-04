@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field
-from uuid import UUID
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
 
 class PollBase(BaseModel):
     type: str = Field(..., example="ban", description="Type: ban, level_up, level_top")
@@ -10,6 +12,7 @@ class PollBase(BaseModel):
 
 class PollCreate(PollBase):
     pass
+
 
 class PollRead(PollBase):
     id: UUID
@@ -20,15 +23,18 @@ class PollRead(PollBase):
     created_at: datetime
     model_config = {"from_attributes": True}
 
+
 class VoteCreate(BaseModel):
     poll_id: UUID
     voter_id: int
     choice: str = Field(..., example="for", description="for or against")
 
+
 class VoteRead(VoteCreate):
     id: UUID
     created_at: datetime
     model_config = {"from_attributes": True}
+
 
 class PollResult(BaseModel):
     poll_id: UUID

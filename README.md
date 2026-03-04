@@ -23,7 +23,7 @@ Votes close automatically after 24 hours via a background scheduler.
 ## Voting Types
 
 | Type | Initiated by | Voters | Success condition | Result |
-|------|-------------|--------|-------------------|--------|
+| ------ | ------------- | -------- | ------------------- | -------- |
 | `ban` | `is_inspector=True` | All active users | >50% of total eligible | Account banned |
 | `level_up` | `role="1"` (self) | `role="2"` and `role="3"` | >50% of votes cast | Role changed to `"2"` |
 | `level_top` | `role="2"` (self) | `role="3"` only | ≥80% of votes cast | Role changed to `"3"` |
@@ -31,7 +31,7 @@ Votes close automatically after 24 hours via a background scheduler.
 ## API Endpoints
 
 | Method | Path | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | `GET` | `/healthcheck` | Service health check |
 | `POST` | `/api/polls/` | Create a new poll |
 | `POST` | `/api/polls/{id}/vote` | Cast a vote |

@@ -1,21 +1,20 @@
 import os
-from fastapi import FastAPI, APIRouter
-from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
 
-from app.polls.views import router as polls_router
-from app.core.main_router import router as main_router
-from app.core.logger import init_logging
-from app.scheduler import scheduler
+from dotenv import load_dotenv
+from fastapi import APIRouter, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
+
+from app.core.logger import init_logging
+from app.core.main_router import router as main_router
+from app.polls.views import router as polls_router
+from app.scheduler import scheduler
 
 load_dotenv(".env")
 
 app = FastAPI(title="Voting Service")
 
-origins = [
-    "http://localhost"
-]
+origins = ["http://localhost"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -30,15 +29,19 @@ app.include_router(polls_router, prefix="/api/polls", tags=["polls"])
 
 init_logging()
 
+
 @app.on_event("startup")
 async def startup():
     scheduler.start()
     logger.info("Scheduler started")
 
+
 @app.on_event("shutdown")
 async def shutdown():
     scheduler.shutdown()
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8900, log_level="debug")

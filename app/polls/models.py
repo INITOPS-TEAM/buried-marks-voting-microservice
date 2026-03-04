@@ -1,7 +1,9 @@
 import uuid
-from sqlalchemy import Column, Integer, DateTime, String, UniqueConstraint
+
+from sqlalchemy import Column, DateTime, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
+
 from app.core.db.session import Base
 
 
@@ -27,6 +29,4 @@ class Vote(Base):
     choice = Column(String, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
 
-    __table_args__ = (
-        UniqueConstraint('poll_id', 'voter_id', name='unique_vote'),
-    )
+    __table_args__ = (UniqueConstraint("poll_id", "voter_id", name="unique_vote"),)
