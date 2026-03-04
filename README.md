@@ -1,23 +1,27 @@
 # Voting Service
 
 Microservice for managing internal voting and role promotions.
+This microservice is part of a mapping application.
+Not for anyone else's use.
 
 ## Overview
 
 Isolated microservice that handles three types of votes:
 ban voting, level promotion (1→2), and senior promotion (2→3).
 Votes close automatically after 24 hours via a background scheduler.
+For correct operation, you also need to have an authorization service
+and a frontend microservice.
 
 ## Tech Stack
 
-- **Python** 3.10
-- **FastAPI** — web framework
-- **SQLAlchemy** 2.0 — ORM (async)
-- **PostgreSQL** — database
-- **Alembic** — migrations
-- **APScheduler** — background job for auto-closing polls
-- **httpx** — HTTP calls to auth-service
-- **PyJWT** — JWT decoding (ES256)
+- **Python**
+- **FastAPI** - web framework
+- **SQLAlchemy** - ORM (async)
+- **PostgreSQL** - database
+- **Alembic** - migrations
+- **APScheduler** - background job for auto-closing polls
+- **httpx** - HTTP calls to auth-service
+- **PyJWT** - JWT decoding (ES256)
 - **Docker** + **docker-compose**
 
 ## Voting Types
@@ -25,25 +29,16 @@ Votes close automatically after 24 hours via a background scheduler.
 | Type | Initiated by | Voters | Success condition | Result |
 | ------ | ------------- | -------- | ------------------- | -------- |
 | `ban` | `is_inspector=True` | All active users | >50% of total eligible | Account banned |
-| `level_up` | `role="1"` (self) | `role="2"` and `role="3"` | >50% of votes cast | Role changed to `"2"` |
-| `level_top` | `role="2"` (self) | `role="3"` only | ≥80% of votes cast | Role changed to `"3"` |
-
-## API Endpoints
-
-| Method | Path | Description |
-| -------- | ------ | ------------- |
-| `GET` | `/healthcheck` | Service health check |
-| `POST` | `/api/polls/` | Create a new poll |
-| `POST` | `/api/polls/{id}/vote` | Cast a vote |
-| `GET` | `/api/polls/{id}` | Get poll status |
-| `GET` | `/api/polls/{id}/result` | Get poll result |
+| `level_up` | `role="1"` (self) | `role="2"`, `role="3"` and `role="4"` | >50% of votes cast | Role changed to `"2"` |
+| `level_top` | `role="2"` (self) | `role="3"` and `role="4"` | ≥80% of votes cast | Role changed to `"3"` |
 
 ## Getting Started
 
 ### Prerequisites
 
+- Other application microservices
 - Docker
-- Docker Compose
+- Docker Compose (One for all microservices in the project. Located in a different repository.)
 
 ### Environment Variables
 
@@ -53,21 +48,9 @@ Copy `.env.example` to `.env` and fill in the values:
 cp .env.example .env
 ```
 
-Required variables:
-
-```bash
-DATABASE_URL=postgresql://user:password@db:5432/voting_db
-DB_USER=
-DB_PASSWORD=
-DB_NAME=
-PGADMIN_EMAIL=
-PGADMIN_PASSWORD=
-PUBLIC_KEY_PATH=
-DJANGO_SECRET_KEY= 
-AUTH_SERVICE_URL=
-```
-
 ### Run
+
+To obtain the dockercompose file, contact the project team lead.
 
 ```bash
 docker compose up -d --build
@@ -75,7 +58,7 @@ docker compose up -d --build
 
 Services started:
 
-- `voting_app` — FastAPI app on <http://localhost/docs>
+- `voting_service` — Listening at the port <http://localhost:8900>
 - `voting_db` — PostgreSQL on port 5432
 
 ### Migrations
@@ -109,18 +92,7 @@ Authorization: Bearer <token>
 ```
 
 The token is decoded using an ES256 public key (`ec_public.key`).
-Token payload must contain: `user_id`, `role`, `inspector`.
-
-## Integration with Auth Service
-
-This service requires the following endpoints to be available in `auth-service`:
-
-```text
-GET  /api/users/count/               — total active users
-GET  /api/users/count/?role=2        — users by role
-POST /api/users/{id}/ban/            — ban user
-PATCH /api/users/{id}/role/          — change user role
-```
+To resolve requests to the `auth-service`, you need to have a Django secret key.
 
 ## Scheduler
 

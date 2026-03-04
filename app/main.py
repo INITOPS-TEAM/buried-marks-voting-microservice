@@ -1,7 +1,7 @@
-import os
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, FastAPI
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
@@ -12,7 +12,17 @@ from app.scheduler import scheduler
 
 load_dotenv(".env")
 
-app = FastAPI(title="Voting Service")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+# startup
+    scheduler.start()
+    logger.info("Scheduler started")
+    yield
+# shutdown
+    scheduler.shutdown()
+    logger.info("Scheduler stopped")
+
+app = FastAPI(title="Voting Service", lifespan=lifespan)
 
 origins = ["http://localhost"]
 
@@ -28,20 +38,3 @@ app.include_router(main_router)
 app.include_router(polls_router, prefix="/api/polls", tags=["polls"])
 
 init_logging()
-
-
-@app.on_event("startup")
-async def startup():
-    scheduler.start()
-    logger.info("Scheduler started")
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    scheduler.shutdown()
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8900, log_level="debug")
