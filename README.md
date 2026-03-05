@@ -4,13 +4,17 @@ Microservice for managing internal voting and role promotions.
 This microservice is part of a mapping application.
 Not for anyone else's use.
 
+You can find these and other related microservices in our organization's repositories:
+**[INITOPS-TEAM Repositories](https://github.com/orgs/INITOPS-TEAM/repositories)**
+
 ## Overview
 
 Isolated microservice that handles three types of votes:
 ban voting, level promotion (1→2), and senior promotion (2→3).
 Votes close automatically after 24 hours via a background scheduler.
-For correct operation, you also need to have an authorization service
-and a frontend microservice.
+For correct operation, you also need to have:
+- **[authorization service](https://github.com/INITOPS-TEAM/buried-marks-authentication-microservice)** 
+- **frontend microservice**
 
 ## Tech Stack
 
@@ -36,9 +40,9 @@ and a frontend microservice.
 
 ### Prerequisites
 
-- Other application microservices
+- [Other application microservices](https://github.com/orgs/INITOPS-TEAM/repositories)
 - Docker
-- Docker Compose (One for all microservices in the project. Located in a different repository.)
+- [Docker Compose the entire project](https://github.com/INITOPS-TEAM/buried-marks-infrastructure))
 
 ### Environment Variables
 
@@ -49,8 +53,6 @@ cp .env.example .env
 ```
 
 ### Run
-
-To obtain the dockercompose file, contact the project team lead.
 
 ```bash
 docker compose up -d --build
@@ -77,15 +79,21 @@ docker compose exec app alembic revision --autogenerate -m "description"
 
 ### API Documentation
 
-Swagger UI is available at:
+Swagger UI (during isolated start-up) is available at:
 
 ```text
 http://localhost:8900/docs
 ```
 
+When deploying the entire application:
+
+```text
+http://localhost/docs
+```
+
 ## Authentication
 
-All endpoints require a JWT token issued by `auth-service`:
+All endpoints require a JWT token issued by [auth-service](https://github.com/INITOPS-TEAM/buried-marks-authentication-microservice)
 
 ```text
 Authorization: Bearer <token>
