@@ -1,3 +1,4 @@
+# --- Stage 1: Builder ---
 FROM python:3.14-slim AS builder
 
 RUN apt-get update && apt-get install -y \
@@ -27,4 +28,8 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 COPY . /app
 
+RUN chmod +x /app/entrypoint.sh
+
 EXPOSE 8900
+
+ENTRYPOINT ["/app/entrypoint.sh"]
