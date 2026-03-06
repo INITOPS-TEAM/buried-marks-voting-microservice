@@ -14,7 +14,21 @@ from app.polls.service import PollService
 
 router = APIRouter()
 
+# List of all votes with filter
+@router.get("/", response_model=list[schemas.PollRead])
+async def list_polls(
+    status: str = None,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(verify_jwt),
+):
+    query = select(Poll)
+    if status:
+        statuses = status.split(",")
+        query = query.where(Poll.status.in_(statuses))
+    result = await db.execute(query)
+    return result.scalars().all()
 
+# Create a poll
 @router.post("/", response_model=schemas.PollRead, status_code=201)
 async def create_poll(
     payload: schemas.PollCreate,
@@ -31,14 +45,14 @@ async def create_poll(
     if payload.type == "level_top" and user["role"] != "2":
         raise HTTPException(status_code=403, detail="Only role 2 can request level top")
 
-    # the target should be the user himself
+# the target should be the user himself
     if payload.type in ("level_up", "level_top"):
         if payload.target_id != user["user_id"]:
             raise HTTPException(
                 status_code=403, detail="You can only nominate yourself"
             )
 
-    # check if there is no active vote for this user
+# check if there is no active vote for this user
     existing = await db.execute(
         select(Poll).where(
             Poll.target_id == payload.target_id,
@@ -51,7 +65,7 @@ async def create_poll(
             status_code=409, detail="Active poll already exists for this user"
         )
 
-    # get the number of eligible users
+# get the number of eligible users
     total_eligible = await PollService.get_total_eligible(payload.type)
 
     poll = Poll(
@@ -70,62 +84,7 @@ async def create_poll(
     logger.info(f"Poll {poll.id} created by {user['user_id']}")
     return poll
 
-
-@router.post("/{poll_id}/vote", response_model=schemas.VoteRead, status_code=201)
-async def cast_vote(
-    poll_id: UUID,
-    payload: schemas.VoteCreate,
-    db: AsyncSession = Depends(get_db),
-    user: dict = Depends(verify_jwt),
-):
-    # check if the vote exists and is active
-    result = await db.execute(select(Poll).where(Poll.id == poll_id))
-    poll = result.scalar_one_or_none()
-
-    if not poll:
-        raise HTTPException(status_code=404, detail="Poll not found")
-    if poll.status != "active":
-        raise HTTPException(status_code=400, detail="Poll is not active")
-    if datetime.now(timezone.utc) > poll.ends_at.replace(tzinfo=timezone.utc):
-        raise HTTPException(status_code=400, detail="Poll has expired")
-
-    # voter rights verification
-    if poll.type == "ban":
-        pass
-    elif poll.type == "level_up" and user["role"] not in ("2", "3"):
-        raise HTTPException(status_code=403, detail="Only role 2 or 3 can vote")
-    elif poll.type == "level_top" and user["role"] != "3":
-        raise HTTPException(status_code=403, detail="Only role 3 can vote")
-
-    # checking if the user has already voted
-    existing_vote = await db.execute(
-        select(Vote).where(Vote.poll_id == poll_id, Vote.voter_id == user["user_id"])
-    )
-    if existing_vote.scalar_one_or_none():
-        raise HTTPException(status_code=409, detail="Already voted")
-
-    vote = Vote(poll_id=poll_id, voter_id=user["user_id"], choice=payload.choice)
-
-    db.add(vote)
-    await db.commit()
-    await db.refresh(vote)
-
-    logger.info(f"Vote cast by {user['user_id']} on poll {poll_id}")
-    return vote
-
-
-@router.get("/{poll_id}", response_model=schemas.PollRead)
-async def get_poll(
-    poll_id: UUID, db: AsyncSession = Depends(get_db), user: dict = Depends(verify_jwt)
-):
-    result = await db.execute(select(Poll).where(Poll.id == poll_id))
-    poll = result.scalar_one_or_none()
-
-    if not poll:
-        raise HTTPException(status_code=404, detail="Poll not found")
-    return poll
-
-
+# result
 @router.get("/{poll_id}/result", response_model=schemas.PollResult)
 async def get_poll_result(
     poll_id: UUID, db: AsyncSession = Depends(get_db), user: dict = Depends(verify_jwt)
@@ -158,3 +117,60 @@ async def get_poll_result(
         total_eligible=poll.total_eligible if poll.type == "ban" else None,
         success=poll.status == "success",
     )
+
+# vote
+@router.post("/{poll_id}/vote", response_model=schemas.VoteRead, status_code=201)
+async def cast_vote(
+    poll_id: UUID,
+    payload: schemas.VoteCreate,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(verify_jwt),
+):
+# check if the vote exists and is active
+    result = await db.execute(select(Poll).where(Poll.id == poll_id))
+    poll = result.scalar_one_or_none()
+
+    if not poll:
+        raise HTTPException(status_code=404, detail="Poll not found")
+    if poll.status != "active":
+        raise HTTPException(status_code=400, detail="Poll is not active")
+    if datetime.now(timezone.utc) > poll.ends_at.replace(tzinfo=timezone.utc):
+        raise HTTPException(status_code=400, detail="Poll has expired")
+
+    # voter rights verification
+    if poll.type == "ban":
+        pass
+    elif poll.type == "level_up" and user["role"] not in ("2", "3", "4"):
+        raise HTTPException(status_code=403, detail="Only role 2, 3 or 4 can vote")
+    elif poll.type == "level_top" and user["role"] not in ("3", "4"):
+        raise HTTPException(status_code=403, detail="Only role 3 or 4 can vote")
+
+    # checking if the user has already voted
+    existing_vote = await db.execute(
+        select(Vote).where(Vote.poll_id == poll_id, Vote.voter_id == user["user_id"])
+    )
+    if existing_vote.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Already voted")
+
+    vote = Vote(poll_id=poll_id, voter_id=user["user_id"], choice=payload.choice)
+
+    db.add(vote)
+    await db.commit()
+    await db.refresh(vote)
+
+    logger.info(f"Vote cast by {user['user_id']} on poll {poll_id}")
+    return vote
+
+# existing votes
+@router.get("/{poll_id}", response_model=schemas.PollRead)
+async def get_poll(
+    poll_id: UUID, db: AsyncSession = Depends(get_db), user: dict = Depends(verify_jwt)
+):
+    result = await db.execute(select(Poll).where(Poll.id == poll_id))
+    poll = result.scalar_one_or_none()
+
+    if not poll:
+        raise HTTPException(status_code=404, detail="Poll not found")
+    return poll
+
+

@@ -17,18 +17,25 @@ class PollService:
     async def get_total_eligible(poll_type: str) -> int:
         """Get the number of eligible users from auth-service"""
         try:
+            internal_token = os.environ.get("DJANGO_SECRET_KEY")
+            headers = {"X-Internal-Token": internal_token}
             async with httpx.AsyncClient() as client:
                 if poll_type == "ban":
-                    resp = await client.get(f"{AUTH_SERVICE_URL}/api/users/count/")
+                    resp = await client.get(
+                        f"{AUTH_SERVICE_URL}/api/users/count/",
+                        headers=headers                    
+                    )   
                 elif poll_type == "level_up":
                     resp = await client.get(
-                        f"{AUTH_SERVICE_URL}/api/users/count/", params={"role": "2,3"}
+                        f"{AUTH_SERVICE_URL}/api/users/count/", params={"role": "2,3"},
+                        headers=headers
                     )
                 elif poll_type == "level_top":
                     resp = await client.get(
-                        f"{AUTH_SERVICE_URL}/api/users/count/", params={"role": "3"}
+                        f"{AUTH_SERVICE_URL}/api/users/count/", params={"role": "3"},
+                        headers=headers
                     )
-                return resp.json().get("count", 10)
+                return resp.json().get("total_eligible", 10)
         except Exception as e:
             logger.warning(f"Auth service unavailable: {e}, using default")
             return 10  # fallback

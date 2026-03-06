@@ -25,16 +25,16 @@ class PollRead(PollBase):
 
 
 class VoteCreate(BaseModel):
-    poll_id: UUID
-    voter_id: int
     choice: str = Field(..., example="for", description="for or against")
 
 
-class VoteRead(VoteCreate):
+class VoteRead(BaseModel):
     id: UUID
+    poll_id: UUID
+    voter_id: int
+    choice: str
     created_at: datetime
     model_config = {"from_attributes": True}
-
 
 class PollResult(BaseModel):
     poll_id: UUID
