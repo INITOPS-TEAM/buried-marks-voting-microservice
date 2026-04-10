@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.git/
+test_api.http
+
+*.md
+.env*
+.gitignore
+*.key
+.dockerignore
+
+.dockerignore
