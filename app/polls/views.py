@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
@@ -74,7 +75,7 @@ async def create_poll(
         created_by=user["user_id"],
         status="active",
         total_eligible=total_eligible,
-        ends_at=datetime.now(timezone.utc) + timedelta(hours=24),
+        ends_at=datetime.now(timezone.utc) + timedelta(minutes=int(os.environ["VOTING_TIME_IN_MINUTES"])),
     )
 
     db.add(poll)
@@ -172,5 +173,3 @@ async def get_poll(
     if not poll:
         raise HTTPException(status_code=404, detail="Poll not found")
     return poll
-
-

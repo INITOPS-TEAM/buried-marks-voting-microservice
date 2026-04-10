@@ -1,9 +1,11 @@
 import os
 import sys
 from logging.config import fileConfig
+from urllib.parse import quote_plus
 
+import boto3
 from dotenv import load_dotenv
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import create_engine, pool
 
 from alembic import context
 
@@ -14,12 +16,42 @@ sys.path.append(BASE_DIR)
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
+DB_HOST = os.environ["DB_HOST"]
+DB_USER = os.environ["POSTGRES_USER"]
+DB_NAME = os.environ["POSTGRES_DB"]
+DB_PORT = int(os.getenv("DB_PORT", "5432"))
+AWS_REGION = os.getenv("AWS_DEFAULT_REGION", "eu-north-1")
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+def provide_token() -> str:
+    client = boto3.client("rds", region_name=AWS_REGION)
+    return client.generate_db_auth_token(
+        DBHostname=DB_HOST,
+        Port=DB_PORT,
+        DBUsername=DB_USER,
+        Region=AWS_REGION,
+    )
+
+
+def build_engine():
+    token = quote_plus(provide_token())
+    url = (
+        f"postgresql+psycopg://{DB_USER}:{token}"
+        f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
+    return create_engine(
+        url,
+        poolclass=pool.NullPool,
+        connect_args={
+            'sslmode': 'verify-ca',
+            'sslrootcert': '/app/global-bundle.pem',
+        },
+    )
+
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -49,7 +81,11 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    token = quote_plus(provide_token()).replace("%", "%%")
+    url = (
+        f"postgresql+psycopg://{DB_USER}:{token}"
+        f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -61,6 +97,7 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
+
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
 
@@ -68,11 +105,7 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    connectable = build_engine()
 
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)

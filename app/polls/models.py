@@ -3,6 +3,7 @@ import uuid
 from sqlalchemy import Column, DateTime, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
+from sqlalchemy.types import TIMESTAMP
 
 from app.core.db.session import Base
 
@@ -16,8 +17,10 @@ class Poll(Base):
     created_by = Column(Integer, nullable=False)
     status = Column(String, nullable=False, default="active")
     total_eligible = Column(Integer, nullable=False)
-    ends_at = Column(DateTime, nullable=False)
-    created_at = Column(DateTime, server_default=func.now())
+    # ends_at = Column(DateTime, nullable=False)
+    ends_at = Column(type_=TIMESTAMP(timezone=True), nullable=False)
+    # created_at = Column(DateTime, server_default=func.now())
+    created_at = Column(type_=TIMESTAMP(timezone=True), server_default=func.now())
 
 
 class Vote(Base):
@@ -27,6 +30,7 @@ class Vote(Base):
     poll_id = Column(UUID(as_uuid=True), nullable=False)
     voter_id = Column(Integer, nullable=False)
     choice = Column(String, nullable=False)
-    created_at = Column(DateTime, server_default=func.now())
+    # created_at = Column(DateTime, server_default=func.now())
+    created_at = Column(type_=TIMESTAMP(timezone=True), server_default=func.now())
 
     __table_args__ = (UniqueConstraint("poll_id", "voter_id", name="unique_vote"),)
