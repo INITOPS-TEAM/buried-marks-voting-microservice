@@ -40,7 +40,6 @@ def provide_token(dialect, conn_rec, cargs, cparams):
     cparams['user'] = DB_USER
     cparams['password'] = token
     cparams['database'] = DB_NAME
-    print(token)
 
 
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
