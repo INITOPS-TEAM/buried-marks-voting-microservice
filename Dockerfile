@@ -17,6 +17,7 @@ RUN pip install --upgrade pip && \
 FROM python:3.14-slim
 
 RUN apt-get update && apt-get install -y \
+    curl \
     libpq5 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*

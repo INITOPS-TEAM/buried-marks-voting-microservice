@@ -4,6 +4,9 @@ set -euo pipefail
 
 cp /tmp/jwt_public_key/ec_public.key /app/public.pem
 
+echo "Fetching AWS TLS for RDS"
+curl -o global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+
 echo "Running pre-start check..."
 python app/backend_pre_start.py
 
